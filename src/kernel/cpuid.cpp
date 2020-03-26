@@ -1,19 +1,3 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2015 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #include <kernel/cpuid.hpp>
 #include <cstring>
@@ -32,7 +16,8 @@ namespace std
 }
 
 namespace CPUID {
-  const Feature_map feature_names {
+  const std::unordered_map<Feature, const char*> feature_names
+  {
       {Feature::SSE2,"SSE2"},
       {Feature::SSE3,"SSE3"},
       {Feature::SSSE3,"SSSE3"},
@@ -257,11 +242,15 @@ namespace
 
     // Call cpuid
     // EBX/RBX needs to be preserved depending on the memory model and use of PIC
+
     cpuid_t result;
+#if defined(ARCH_x86) || defined(ARCH_x86_64)
     asm volatile ("cpuid"
       : "=a"(result.EAX), "=b"(result.EBX), "=c"(result.ECX), "=d"(result.EDX)
       : "a"(func), "c"(subfunc));
+#elif defined(ARCH_aarch64)
 
+#endif
     // Try to find an empty spot in the cache
     for (auto& cached : cache)
     {
@@ -331,8 +320,8 @@ bool CPUID::kvm_feature(unsigned mask) noexcept
   return (res.EAX & mask) != 0;
 }
 
-CPUID::Feature_list CPUID::detect_features() {
-  CPUID::Feature_list vec;
+std::vector<Feature> CPUID::detect_features() {
+  std::vector<Feature> vec;
   for (const auto feat : feature_names) {
     if (CPUID::has_feature(feat.first))
       vec.push_back(feat.first);
@@ -340,8 +329,8 @@ CPUID::Feature_list CPUID::detect_features() {
   return vec;
 }
 
-CPUID::Feature_names CPUID::detect_features_str() {
-  CPUID::Feature_names names;
+std::vector<const char*> CPUID::detect_features_str() {
+  std::vector<const char*> names;
   auto features = detect_features();
   for (auto& feat : features) {
     names.push_back(feature_names.at(feat));

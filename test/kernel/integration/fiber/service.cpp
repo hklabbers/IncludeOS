@@ -1,25 +1,7 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2017 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #include <os>
 #include <vector>
 #include <kernel/fiber.hpp>
-
-//extern void print_backtrace();
 
 void scheduler1();
 void scheduler2();
@@ -78,7 +60,7 @@ void basic_test() {
   printf("\n **********  Basic_test %i  ********** \n", i);
   INFO("B1", "Main thread: %i", Fiber::main() ? Fiber::main()->id() : -1);
   INFO("B1", "test. backtrace: ");
-  print_backtrace();
+  os::print_backtrace();
   printf("_____________________________________ \n\n");
 
 }
@@ -107,7 +89,7 @@ void basic_yield() {
   Fiber::yield();
 
   INFO("Yielder", "RESUMED ");
-  print_backtrace();
+  os::print_backtrace();
   print_frame();
   INFO("Yielder", "EXIT ");
   printf("_____________________________________ \n\n");
@@ -265,7 +247,7 @@ void Service::start()
   print_frame();
 
   INFO("Service", "Param address %p, string: %s \n", posix_str, posix_str);
-  print_backtrace();
+  os::print_backtrace();
 
   Fiber basic{basic_test};
   INFO("Service", "Starting basic test. rsp @ %p, fiber %i \n", get_rsp(), basic.id());
@@ -310,15 +292,13 @@ void Service::start()
 
   INFO("Service", "Computed long: %li", ret);
 
-
-#ifdef INCLUDEOS_SMP_ENABLE
   if (SMP::cpu_count() > 1) {
     extern void fiber_smp_test();
     fiber_smp_test();
   } else {
     INFO("Service", "SMP test requires > 1 cpu's, found %i \n", SMP::cpu_count());
   }
-#endif
+
   SMP_PRINT("Service done. rsp @ %p \n", get_rsp());
   SMP_PRINT("SUCCESS\n");
   exit(0);

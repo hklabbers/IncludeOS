@@ -1,19 +1,4 @@
 
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2018 IncludeOS AS, Oslo, Norway
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #ifndef UTIL_ALLOC_BUDDY_HPP
 #define UTIL_ALLOC_BUDDY_HPP
@@ -28,9 +13,7 @@
 #include <util/bitops.hpp>
 #include <util/units.hpp>
 
-//
 // Tree node flags
-//
 
 namespace os::mem::buddy {
   enum class Flags : uint8_t {
@@ -732,37 +715,6 @@ namespace os::mem::buddy {
     const Size_t pool_size_ = min_size;
     Size_t bytes_used_ = 0;
     bool overbooked_ = false;
-  };
-
-  /**
-   * C++17 std::allocator interface using buddy allocator
-   **/
-  template <typename T, typename Resource>
-  struct Allocator {
-    using value_type = T;
-
-    Allocator(Resource* alloc)
-      : resource{alloc}
-    {}
-
-    T* allocate(std::size_t size) {
-      return reinterpret_cast<T*>(resource->allocate(size * sizeof(T)));
-    }
-
-    void deallocate(T* ptr, std::size_t size) {
-      resource->deallocate(ptr, size * sizeof(T));
-    }
-
-    bool operator==(const Allocator& other) {
-      return resource == other.resource;
-    }
-
-    bool operator!=(const Allocator& other) {
-      return not other == *this;
-    }
-
-    Resource* resource;
-
   };
 
 }

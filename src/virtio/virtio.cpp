@@ -1,23 +1,8 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2015 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #include <virtio/virtio.hpp>
 #include <kernel/events.hpp>
-#include <kernel/os.hpp>
+#include <os.hpp>
+#include <kernel.hpp>
 #include <hw/pci.hpp>
 #include <smp>
 #include <arch.hpp>
@@ -174,7 +159,7 @@ uint32_t Virtio::queue_size(uint16_t index) {
 bool Virtio::assign_queue(uint16_t index, const void* queue_desc)
 {
   hw::outpw(iobase() + VIRTIO_PCI_QUEUE_SEL, index);
-  hw::outpd(iobase() + VIRTIO_PCI_QUEUE_PFN, OS::addr_to_page((uintptr_t) queue_desc));
+  hw::outpd(iobase() + VIRTIO_PCI_QUEUE_PFN, kernel::addr_to_page((uintptr_t) queue_desc));
 
   if (_pcidev.has_msix())
   {
@@ -185,7 +170,7 @@ bool Virtio::assign_queue(uint16_t index, const void* queue_desc)
     assert(hw::inpw(iobase() + VIRTIO_MSI_QUEUE_VECTOR) == index);
   }
 
-  return hw::inpd(iobase() + VIRTIO_PCI_QUEUE_PFN) == OS::addr_to_page((uintptr_t) queue_desc);
+  return hw::inpd(iobase() + VIRTIO_PCI_QUEUE_PFN) == kernel::addr_to_page((uintptr_t) queue_desc);
 }
 
 uint32_t Virtio::probe_features() {

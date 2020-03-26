@@ -1,23 +1,7 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2016-2017 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #include <service>
 #include <net/vlan>
-#include <net/inet>
+#include <net/interfaces>
 
 void test_finished() {
   static int i = 0;
@@ -26,16 +10,16 @@ void test_finished() {
 
 void Service::start()
 {
-  auto& eth0 = net::Super_stack::get(0);
-  auto& eth1 = net::Super_stack::get(1);
+  auto& eth0 = net::Interfaces::get(0);
+  auto& eth1 = net::Interfaces::get(1);
 
   net::setup_vlans();
 
-  auto& vlan0_2 = net::Super_stack::get(0,2);
-  auto& vlan0_42 = net::Super_stack::get(0,42);
+  auto& vlan0_2 = net::Interfaces::get(0,2);
+  auto& vlan0_42 = net::Interfaces::get(0,42);
 
-  auto& vlan1_2 = net::Super_stack::get(1,2);
-  auto& vlan1_42 = net::Super_stack::get(1,42);
+  auto& vlan1_2 = net::Interfaces::get(1,2);
+  auto& vlan1_42 = net::Interfaces::get(1,42);
 
 
   eth0.tcp().listen(80, [](auto conn) {

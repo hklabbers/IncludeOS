@@ -1,19 +1,3 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2015-2017 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #pragma once
 #ifndef NET_TCP_CONNECTION_HPP
@@ -262,8 +246,8 @@ public:
     SEQ_OUT_OF_ORDER,
     ACK_NOT_SET,
     ACK_OUT_OF_ORDER,
-    RST,
-    RCV_WND_ZERO
+    RCV_WND_ZERO,
+    RST
   }; // < Drop_reason
 
   /**
@@ -572,8 +556,8 @@ public:
 
     uint32_t TS_recent; // Recent timestamp received from user [RFC 7323]
 
-    TCB(const uint32_t recvwin);
-    TCB();
+    TCB(const uint16_t mss, const uint32_t recvwin);
+    TCB(const uint16_t mss);
 
     void init() {
       ISS = Connection::generate_iss();
@@ -631,7 +615,6 @@ public:
    */
   void reset_callbacks();
 
-
   using Recv_window_getter = delegate<uint32_t()>;
   void set_recv_wnd_getter(Recv_window_getter func)
   { recv_wnd_getter = func; }
@@ -669,10 +652,6 @@ private:
   /** Round Trip Time Measurer */
   RTTM rttm;
 
-  /** Function from where to retrieve
-   * the current recv window size for this connection */
-  Recv_window_getter recv_wnd_getter;
-
   /** Callbacks */
   ConnectCallback         on_connect_;
   DisconnectCallback      on_disconnect_;
@@ -683,6 +662,11 @@ private:
 
   /** Time Wait / DACK timeout timer */
   Timer timewait_dack_timer;
+
+  Recv_window_getter recv_wnd_getter;
+
+  seq_t fin_seq_ = 0;
+  bool fin_recv_ = false;
 
   bool close_signaled_ = false;
 
@@ -783,6 +767,12 @@ private:
   */
   void receive_disconnect();
 
+  void update_fin(const Packet_view& pkt);
+
+  bool should_handle_fin() const noexcept
+  { return fin_recv_ and static_cast<int32_t>(fin_seq_ - cb.RCV.NXT) == 0; }
+
+  void handle_fin();
 
   /// --- WRITING --- ///
 
@@ -1023,6 +1013,8 @@ private:
   Packet_view_ptr outgoing_packet()
   { return create_outgoing_packet(); }
 
+  uint16_t MSS() const noexcept;
+
   /**
    * @brief      Maximum Segment Data Size
    *             Limits the size for outgoing packets
@@ -1083,7 +1075,7 @@ private:
   void finish_fast_recovery();
 
   bool reno_full_ack(seq_t ACK)
-  { return ACK - 1 > cb.recover; }
+  { return static_cast<int32_t>(ACK - cb.recover) > 1; }
 
 
 
@@ -1203,6 +1195,9 @@ private:
     Add an option.
   */
   void add_option(Option::Kind, Packet_view&);
+
+  void add_syn_options(Packet_view& pkt);
+  void add_synack_options(Packet_view& pkt);
 
 
 }; // < class Connection

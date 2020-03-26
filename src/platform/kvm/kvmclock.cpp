@@ -2,7 +2,7 @@
 #include <arch/x86/cpu.hpp>
 #include <util/units.hpp>
 #include <kernel/cpuid.hpp>
-#include <kernel/os.hpp>
+#include <os.hpp>
 #include <cstdio>
 #include <info>
 #include <smp>
@@ -20,7 +20,8 @@ struct alignas(4096) pvclock_vcpu_time_info {
 	unsigned char flags;
 	unsigned char pad[2];
 }__attribute__((packed));
-static SMP::Array<pvclock_vcpu_time_info> vcpu_time;
+static std::vector<pvclock_vcpu_time_info> vcpu_time;
+SMP_RESIZE_EARLY_GCTOR(vcpu_time);
 
 struct alignas(4096) pvclock_wall_clock {
 	uint32_t version;
@@ -84,7 +85,7 @@ uint64_t KVM_clock::system_time()
     version = vcpu.version;
     asm("mfence" ::: "memory");
     // nanosecond offset based on TSC
-    uint64_t delta = (__arch_cpu_cycles() - vcpu.tsc_timestamp);
+    uint64_t delta = (os::Arch::cpu_cycles() - vcpu.tsc_timestamp);
     time_ns = pvclock_scale_delta(delta, vcpu.tsc_to_system_mul, vcpu.tsc_shift);
     // base system time
     time_ns += vcpu.system_time;

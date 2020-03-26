@@ -1,6 +1,6 @@
 #include <kernel/rng.hpp>
 #include <kernel/cpuid.hpp>
-#include <kernel/os.hpp>
+#include <os.hpp>
 #include <arch.hpp>
 #include <kprint>
 extern "C" void intel_rdrand(uint64_t*);
@@ -11,7 +11,7 @@ static void fallback_entropy(uint64_t* res)
   uint64_t clock = (uint64_t) res;
   // this is horrible, better solution needed here
   for (int i = 0; i < 64; ++i) {
-    clock += OS::cycles_since_boot();
+    clock += os::cycles_since_boot();
     asm volatile("cpuid" ::: "memory", "eax", "ebx", "ecx", "edx");
   }
   // here we need to add our own bits
@@ -31,7 +31,7 @@ void RNG::init()
     return;
   }
 #ifndef PLATFORM_x86_solo5
-  rng_reseed_init(fallback_entropy, 64*16);
+  rng_reseed_init(fallback_entropy, 10);
   return;
 #endif
   assert(0 && "No randomness fallback");

@@ -1,19 +1,3 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2017 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 //#define VLAN_DEBUG 1
 #ifdef VLAN_DEBUG
@@ -23,7 +7,7 @@
 #endif
 
 #include <net/vlan_manager.hpp>
-#include <hw/devices.hpp>
+#include <hal/machine.hpp>
 
 namespace net {
 
@@ -38,6 +22,7 @@ VLAN_manager& VLAN_manager::get(int N)
   }
   else
   {
+    PRINT("<VLAN_manager> Creating VLAN manager for N=%i\n", N);
     auto ptr = std::unique_ptr<VLAN_manager>(new VLAN_manager);
     auto ok = managers.emplace(N, std::move(ptr));
     Expects(ok.second);
@@ -57,7 +42,7 @@ VLAN_manager::VLAN_interface& VLAN_manager::add(hw::Nic& link, const int id)
   auto* raw = vif.get();
 
   // register as a device (unnecessary?)
-  hw::Devices::register_device<hw::Nic>(std::move(vif));
+  os::machine().add<hw::Nic>(std::move(vif));
 
   auto it = links_.emplace(id, raw);
   Ensures(it.second && "Could not insert - ID is most likely already taken");

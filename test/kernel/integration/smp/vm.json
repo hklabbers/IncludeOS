@@ -1,4 +1,5 @@
 {
-  "image" : "smp.img",
-  "smp" : 16
+  "image" : "service.img",
+  "smp" : 32,
+  "mem" : 256
 }

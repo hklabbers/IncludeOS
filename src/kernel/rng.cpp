@@ -1,24 +1,8 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2016 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #include <kernel/rng.hpp>
 #include <kernel/cpuid.hpp>
-#include <kernel/os.hpp>
-#include <kernel/rdrand.hpp>
+#include <os.hpp>
+#include <os.hpp>
 #include <algorithm>
 #include <cstring>
 #include <smp>
@@ -31,7 +15,21 @@ struct alignas(SMP_ALIGN) rng_state
   int32_t  reseed_rounds  = 0;
   delegate<void(uint64_t*)> reseed_callback = nullptr;
 };
-static SMP::Array<rng_state> rng;
+#ifdef INCLUDEOS_RNG_IS_SHARED
+static rng_state shared_rng;
+#else
+static std::array<rng_state, SMP_MAX_CORES> rng; // DO NOT EDIT
+#endif
+
+inline rng_state& local_rng() noexcept
+{
+#ifdef INCLUDEOS_RNG_IS_SHARED
+	return shared_rng;
+#else
+	return PER_CPU(rng);
+#endif
+}
+
 // every RESEED_RATE bytes entropy is refilled
 static const int RESEED_RATE = 4096;
 
@@ -135,20 +133,20 @@ void rng_absorb(const void* input, size_t bytes)
      size_t absorbing = std::min<size_t>(bytes - absorbed, SHAKE_128_RATE);
 
      xor_bytes(static_cast<const uint8_t*>(input) + absorbed,
-               reinterpret_cast<uint8_t*>(PER_CPU(rng).state),
+               reinterpret_cast<uint8_t*>(local_rng().state),
                absorbing);
 
-      keccak_1600_p(PER_CPU(rng).state);
+      keccak_1600_p(local_rng().state);
       absorbed += absorbing;
      }
-  PER_CPU(rng).reseed_counter += RESEED_RATE * bytes;
+  local_rng().reseed_counter += RESEED_RATE * bytes;
   }
 
 static void reseed_now()
 {
   uint64_t value;
-  for (int i = 0; i < PER_CPU(rng).reseed_rounds; i++) {
-      PER_CPU(rng).reseed_callback(&value);
+  for (int i = 0; i < local_rng().reseed_rounds; i++) {
+      local_rng().reseed_callback(&value);
       rng_absorb(&value, sizeof(value));
   }
 }
@@ -160,23 +158,24 @@ void rng_extract(void* output, size_t bytes)
    while(copied < bytes)
       {
       size_t copying = std::min<size_t>(bytes - copied, SHAKE_128_RATE);
-      memcpy(static_cast<uint8_t*>(output) + copied, PER_CPU(rng).state, copying);
-      keccak_1600_p(PER_CPU(rng).state);
+      memcpy(static_cast<uint8_t*>(output) + copied, local_rng().state, copying);
+      keccak_1600_p(local_rng().state);
       copied += copying;
       }
     // don't reseed if no callback to do so
-    if (PER_CPU(rng).reseed_callback == nullptr) return;
-    PER_CPU(rng).reseed_counter -= bytes;
+    if (local_rng().reseed_callback == nullptr) return;
+    local_rng().reseed_counter -= bytes;
     // reseed when below certain entropy
-    if (PER_CPU(rng).reseed_counter < 0) {
-      PER_CPU(rng).reseed_counter = 0;
+    if (local_rng().reseed_counter < 0) {
+      local_rng().reseed_counter = 0;
       reseed_now();
     }
    }
 
+#include <kprint>
 void rng_reseed_init(delegate<void(uint64_t*)> func, int rounds)
 {
-  PER_CPU(rng).reseed_callback = func;
-  PER_CPU(rng).reseed_rounds = rounds;
+  local_rng().reseed_callback = func;
+  local_rng().reseed_rounds = rounds;
   reseed_now();
 }

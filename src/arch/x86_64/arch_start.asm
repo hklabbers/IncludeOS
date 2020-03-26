@@ -1,30 +1,15 @@
-; This file is a part of the IncludeOS unikernel - www.includeos.org
-;
-; Copyright 2015 Oslo and Akershus University College of Applied Sciences
-; and Alfred Bratterud
-;
-; Licensed under the Apache License, Version 2.0 (the "License");
-; you may not use this file except in compliance with the License.
-; You may obtain a copy of the License at
-;
-;     http://www.apache.org/licenses/LICENSE-2.0
-;
-; Unless required by applicable law or agreed to in writing, software
-; distributed under the License is distributed on an "AS IS" BASIS,
-; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-; See the License for the specific language governing permissions and
-; limitations under the License.
 global __arch_start:function
 global __gdt64_base_pointer
+global __startup_was_fast
+global fast_kernel_start:function
 extern kernel_start
 extern __multiboot_magic
 extern __multiboot_addr
 
 %define PAGE_SIZE               0x1000
-%define P4_TAB                  0x1000
-%define P3_TAB                  0x2000 ;; - 0x5fff
-%define P2_TAB                  0x100000
-%define STACK_LOCATION          0x200000 - 16
+%define P4_TAB                  0x1000 ;; one page
+%define P3_TAB                  0x2000 ;; one page
+%define P2_TAB                  0x100000 ;; many pages
 
 %define IA32_EFER               0xC0000080
 %define IA32_STAR               0xC0000081
@@ -54,6 +39,7 @@ extern __multiboot_addr
 
 
 [BITS 32]
+SECTION .text
 __arch_start:
     ;; disable old paging
     mov eax, cr0
@@ -122,6 +108,7 @@ __arch_start:
 
 
 [BITS 64]
+SECTION .text
 long_mode:
     cli
 
@@ -133,22 +120,27 @@ long_mode:
     mov gs, cx
     mov ss, cx
 
+resume_startup:
     ;; set up new stack for 64-bit
+    extern _ELF_START_
     push rsp
-    mov  rsp, STACK_LOCATION
-    push 0
-    push 0
+    mov  rsp, _ELF_START_
     mov  rbp, rsp
-
-    ;; setup temporary smp table
-    mov rax, sentinel_table
-    mov rdx, 0
-    mov rcx, IA32_FS_BASE ;; FS BASE
-    wrmsr
 
     mov ecx, IA32_STAR
     mov edx, 0x8
     mov eax, 0x0
+    wrmsr
+
+    ;; setup fake TLS table for SMP and SSP
+    mov ecx, IA32_FS_BASE
+    mov edx, 0x0
+    mov eax, tls_table
+    wrmsr
+
+    mov ecx, IA32_GS_BASE
+    mov edx, 0x0
+    mov eax, smp_table
     wrmsr
 
     ;; geronimo!
@@ -158,13 +150,12 @@ long_mode:
     pop  rsp
     ret
 
-sentinel_table:
-    dq sentinel_table ;; 0x0
-    dq 0 ;; 0x8
-    dq 0 ;; 0x10
-    dq 0 ;; 0x18
-    dq 0 ;; 0x20
-    dq 0x123456789ABCDEF
+;; this function can be jumped to directly from hotswap
+fast_kernel_start:
+	mov DWORD[__multiboot_magic], eax
+	mov DWORD[__multiboot_addr],  ebx
+	mov WORD [__startup_was_fast], 1
+	jmp resume_startup
 
 SECTION .data
 GDT64:
@@ -185,10 +176,18 @@ GDT64:
     db 00000000b                 ; Granularity.
     db 0                         ; Base (high).
   .Task: equ $ - GDT64         ; TSS descriptor.
-    dq 0
-    dq 0
+    resq 2*256 ; make room for 256 CPUs
 
     dw 0x0 ;; alignment padding
 __gdt64_base_pointer:
     dw $ - GDT64 - 1             ; Limit.
     dq GDT64                     ; Base.
+
+SECTION .rodata
+tls_table:
+    dq   tls_table
+__startup_was_fast:
+	dw   0
+SECTION .bss
+smp_table:
+    resw 8

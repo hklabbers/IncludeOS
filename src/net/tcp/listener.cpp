@@ -1,19 +1,3 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2015-2016 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #include <gsl/gsl_assert>
 #include <net/tcp/listener.hpp>
@@ -73,6 +57,7 @@ void Listener::segment_arrived(Packet_view& packet) {
     // don't waste time if the packet does not have SYN
     if(UNLIKELY(not packet.isset(SYN) or packet.has_tcp_data()))
     {
+      TCPL_PRINT2("<Listener::segment_arrived> Packet did not have SYN - dropping\n");
       host_.send_reset(packet);
       return;
     }
@@ -81,8 +66,10 @@ void Listener::segment_arrived(Packet_view& packet) {
     host_.connection_attempts_++;
 
     // if we don't like this client, do nothing
-    if(UNLIKELY(on_accept_(packet.source()) == false))
+    if(UNLIKELY(on_accept_(packet.source()) == false)) {
+      TCPL_PRINT2("<Listener::segment_arrived> on_accept says NO\n");
       return;
+    }
 
     // remove oldest connection if queue is full
     TCPL_PRINT2("<Listener::segment_arrived> SynQueue: %u\n", syn_queue_.size());

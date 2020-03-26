@@ -1,18 +1,3 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2018 IncludeOS AS, Oslo, Norway
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #ifndef UTIL_DETAIL_ALLOC_PMR
 #define UTIL_DETAIL_ALLOC_PMR
@@ -37,17 +22,17 @@ namespace os::mem::detail {
         throw std::bad_alloc();
       }
 
-      // Adapt to memalign's minimum size- and alignemnt requiremnets
+      // Adapt to aligned_alloc's minimum size- and alignemnt requiremnets
       if (align < sizeof(void*))
         align = sizeof(void*);
 
       if (size < sizeof(void*))
         size = sizeof(void*);
 
-      void* buf = memalign(align, size);
+      void* buf = aligned_alloc(align, size);
 
       if (buf == nullptr) {
-        //printf("pmr memalign return nullptr, throw bad alloc\n");
+        //printf("pmr aligned_alloc return nullptr, throw bad alloc\n");
         throw std::bad_alloc();
       }
 
@@ -58,7 +43,7 @@ namespace os::mem::detail {
 
     void do_deallocate (void* ptr, size_t size, size_t) override {
 
-      // Adapt to memalign
+      // Adapt to aligned_alloc
       if (size < sizeof(void*))
         size = sizeof(void*);
 

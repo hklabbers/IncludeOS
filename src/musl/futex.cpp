@@ -1,6 +1,6 @@
 #include "stub.hpp"
 #include <errno.h>
-#include <kprint>
+#include <kernel/threads.hpp>
 
 #define FUTEX_WAIT 0
 #define FUTEX_WAKE 1
@@ -15,22 +15,20 @@
 #define FUTEX_PRIVATE 128
 #define FUTEX_CLOCK_REALTIME 256
 
-extern void print_backtrace();
-
-static int sys_futex(int *uaddr, int /*futex_op*/, int val,
-                      const struct timespec *timeout, int /*val3*/)
+static int sys_futex(int *uaddr, int futex_op, int val,
+                      const struct timespec* /* timeout */, int /*val3*/)
 {
-
-  if (*uaddr != val){
-    return EAGAIN;
-  } else {
-    *uaddr = 0;
+  switch (futex_op & 0xF) {
+	  case FUTEX_WAIT: if (*uaddr != val) return -EAGAIN;
+			    // we have to yield here because of cooperative threads
+			    // TODO: potential for sleeping here
+			    while (*uaddr == val) __thread_yield();
+			    break;
+	  case FUTEX_WAKE: // We can't wake up anything specific yet, so just yield
+			    __thread_yield();
+	  default:
+			    break;
   }
-
-  if (timeout == nullptr){
-    kprintf("No timeout\n");
-  }
-
   return 0;
 }
 

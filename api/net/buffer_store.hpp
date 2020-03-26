@@ -1,19 +1,3 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2015-2016 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #pragma once
 #ifndef NET_BUFFER_STORE_HPP
@@ -84,10 +68,8 @@ namespace net
     int                   index = -1;
     std::vector<uint8_t*> available_;
     std::vector<uint8_t*> pools_;
-#ifdef INCLUDEOS_SMP_ENABLE
     // has strict alignment reqs, so put at end
-    spinlock_t           plock = 0;
-#endif
+    smp_spinlock          plock;
     BufferStore(BufferStore&)  = delete;
     BufferStore(BufferStore&&) = delete;
     BufferStore& operator=(BufferStore&)  = delete;
@@ -98,10 +80,9 @@ namespace net
   {
     auto* buff = (uint8_t*) addr;
     if (LIKELY(this->is_valid(buff))) {
-#ifdef INCLUDEOS_SMP_ENABLE
-      scoped_spinlock spinlock(this->plock);
-#endif
+      plock.lock();
       this->available_.push_back(buff);
+      plock.unlock();
       return;
     }
     throw std::runtime_error("Buffer did not belong");

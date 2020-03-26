@@ -1,6 +1,8 @@
+// -*- C++ -*-
+
 #pragma once
 
-#include <kernel/os.hpp>
+#include <os.hpp>
 #include <vector>
 
 class SystemLog
@@ -18,7 +20,7 @@ public:
   static std::vector<char> copy();
 
   // send whole system log to stdout @function
-  static void print_to(OS::print_func function);
+  static void print_to(os::print_func function);
 
   // set and get global bits
   static uint32_t get_flags();
@@ -30,7 +32,7 @@ public:
 };
 
 
-inline void SystemLog::print_to(OS::print_func funcptr)
+inline void SystemLog::print_to(os::print_func funcptr)
 {
   auto copy = SystemLog::copy();
   if (not copy.empty()) funcptr(copy.data(), copy.size());

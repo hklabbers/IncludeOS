@@ -1,4 +1,9 @@
-#include <kernel/os.hpp>
 
-const char* OS::version_str_ = OS_VERSION;
-const char* OS::arch_str_    = ARCH;
+#include <os.hpp>
+#ifndef USERSPACE_KERNEL
+#include <version.h>
+#endif
+
+const char* os::version() noexcept {
+  return OS_VERSION;
+}

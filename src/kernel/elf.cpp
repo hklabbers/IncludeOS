@@ -1,19 +1,3 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2015 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #include <kernel/elf.hpp>
 #include <util/crc32.hpp>
@@ -25,20 +9,22 @@
 #include <unistd.h>
 #include <vector>
 #include <elf.h>
+#include <os.hpp>
 #include <arch.hpp>
 
-#if __LP64__
-typedef Elf64_Sym   ElfSym;
-typedef Elf64_Ehdr  ElfEhdr;
-typedef Elf64_Phdr  ElfPhdr;
-typedef Elf64_Shdr  ElfShdr;
-typedef Elf64_Addr  ElfAddr;
-#elif __ILP32__
-typedef Elf32_Sym   ElfSym;
-typedef Elf32_Ehdr  ElfEhdr;
-typedef Elf32_Phdr  ElfPhdr;
-typedef Elf32_Shdr  ElfShdr;
-typedef Elf32_Addr  ElfAddr;
+#include <stdint.h>
+#if UINTPTR_MAX == 0xffffffffffffffff
+  typedef Elf64_Sym   ElfSym;
+  typedef Elf64_Ehdr  ElfEhdr;
+  typedef Elf64_Phdr  ElfPhdr;
+  typedef Elf64_Shdr  ElfShdr;
+  typedef Elf64_Addr  ElfAddr;
+#elif UINTPTR_MAX == 0xffffffff
+  typedef Elf32_Sym   ElfSym;
+  typedef Elf32_Ehdr  ElfEhdr;
+  typedef Elf32_Phdr  ElfPhdr;
+  typedef Elf32_Shdr  ElfShdr;
+  typedef Elf32_Addr  ElfAddr;
 #else
   #error "Unknown data model"
 #endif
@@ -67,8 +53,8 @@ static ElfEhdr& elf_header() {
 }
 
 struct SymTab {
-  ElfSym*   base;
-  uint32_t  entries;
+  const ElfSym* base;
+  uint32_t      entries;
 };
 struct StrTab {
   const char* base;
@@ -80,17 +66,23 @@ class ElfTables
 public:
   ElfTables() {}
 
-  void set(ElfSym* syms,
+  void set(const ElfSym* syms,
            uint32_t    entries,
-           const char* string_table,
+           const char* strs,
            uint32_t    strsize,
            uint32_t csum_syms,
            uint32_t csum_strs)
   {
-    symtab    = {(ElfSym*) syms, entries};
-    strtab    = {string_table, strsize};
-    checksum_syms = csum_syms;
-    checksum_strs = csum_strs;
+    /*
+    auto* symbase = new ElfSym[entries];
+    std::copy(syms, syms + entries, symbase);
+    char* strbase = new char[strsize];
+    std::copy(string_table, string_table + strsize, strbase);
+    */
+    this->symtab = {syms, entries};
+    this->strtab = {strs, strsize};
+    this->checksum_syms = csum_syms;
+    this->checksum_strs = csum_strs;
   }
 
   safe_func_offset getsym_safe(ElfAddr addr, char* buffer, size_t length)
@@ -103,7 +95,7 @@ public:
     if (LIKELY(addr > 0x1000))
     {
       // resolve manually from symtab
-      auto* sym = getaddr(addr);
+      const auto* sym = getaddr(addr);
       if (LIKELY(sym)) {
         auto     base   = sym->st_value;
         uint32_t offset = (uint32_t) (addr - base);
@@ -119,7 +111,7 @@ public:
     return {buffer, static_cast<uintptr_t>(addr), 0};
   }
 
-  ElfSym* getaddr(ElfAddr addr)
+  const ElfSym* getaddr(ElfAddr addr)
   {
     // find exact match
     for (int i = 0; i < (int) symtab.entries; i++)
@@ -130,9 +122,9 @@ public:
           return &symtab.base[i];
         }
     }
-    // try again, but use guesstimate size
-    ElfSym*   guess = nullptr;
-    uintptr_t gdiff = 512;
+    // try again, but use closest match
+    const ElfSym* guess = nullptr;
+    uintptr_t     gdiff = 512;
     for (size_t i = 0; i < symtab.entries; i++)
     {
       if (addr >= symtab.base[i].st_value
@@ -181,7 +173,7 @@ public:
   }
 
 private:
-  const char* sym_name(ElfSym* sym) const {
+  const char* sym_name(const ElfSym* sym) const {
     return &strtab.base[sym->st_name];
   }
   const char* demangle_safe(const char* name, char* buffer, size_t buflen) const
@@ -227,7 +219,7 @@ uintptr_t Elf::resolve_addr(void* addr)
   return (uintptr_t) addr;
 }
 
-safe_func_offset Elf::safe_resolve_symbol(void* addr, char* buffer, size_t length)
+safe_func_offset Elf::safe_resolve_symbol(const void* addr, char* buffer, size_t length)
 {
   return get_parser().getsym_safe((ElfAddr) addr, buffer, length);
 }
@@ -237,7 +229,7 @@ bool Elf::verify_symbols()
   return get_parser().verify_symbols();
 }
 
-void print_backtrace2(void(*stdout_function)(const char*, size_t))
+void os::print_backtrace(void(*stdout_function)(const char*, size_t)) noexcept
 {
   char _symbol_buffer[8192];
   char _btrace_buffer[8192];
@@ -248,7 +240,7 @@ void print_backtrace2(void(*stdout_function)(const char*, size_t))
     write(1, _btrace_buffer, len);
   }
 
-#if defined(__ILP32__)
+#if UINTPTR_MAX == 0xffffffff
   #define PRINT_TRACE(N, ra) \
     auto symb = Elf::safe_resolve_symbol(                     \
                 ra, _symbol_buffer, sizeof(_symbol_buffer));  \
@@ -256,7 +248,8 @@ void print_backtrace2(void(*stdout_function)(const char*, size_t))
             "[%d] 0x%08x + 0x%.3x: %s\n",         \
             N, symb.addr, symb.offset, symb.name);\
             stdout_function(_btrace_buffer, len);
-#elif defined(__LP64__)
+
+#elif UINTPTR_MAX == 0xffffffffffffffff
   #define PRINT_TRACE(N, ra) \
     auto symb = Elf::safe_resolve_symbol(                     \
                 ra, _symbol_buffer, sizeof(_symbol_buffer));  \
@@ -302,15 +295,11 @@ void print_backtrace2(void(*stdout_function)(const char*, size_t))
                                 PRINT_TRACE(14, ra);
   }}}}}}}}}}}}}}}
 }
-void print_backtrace()
+void os::print_backtrace() noexcept
 {
-  print_backtrace2([] (const char* text, size_t length) {
+  print_backtrace([] (const char* text, size_t length) {
     write(1, text, length);
   });
-}
-
-void Elf::print_info()
-{
 }
 
 #include <kprint>
@@ -326,25 +315,13 @@ void _print_elf_symbols()
   }
   kprintf("*** %u entries\n", symtab.entries);
 }
-extern "C"
-void _validate_elf_symbols()
+void Elf::print_info()
 {
-  const auto& symtab = parser.get_symtab();
-  const char* strtab = parser.get_strtab();
-  if (symtab.entries == 0 || strtab == nullptr) return;
-
-  for (size_t i = 1; i < symtab.entries; i++)
-  {
-    if (symtab.base[i].st_value != 0) {
-      assert(symtab.base[i].st_value > 0x2000);
-      const char* string = &strtab[symtab.base[i].st_name];
-      assert(strlen(string));
-    }
-  }
+  _print_elf_symbols();
 }
 
 static struct relocated_header {
-  ElfSym*   syms = nullptr;
+  ElfSym*   syms = (ElfSym*) 0x0;
   uint32_t  entries = 0xFFFF;
   uint32_t  strsize = 0xFFFF;
   uint32_t  check_syms = 0xFFFF;
@@ -385,6 +362,7 @@ void _move_elf_syms_location(const void* location, void* new_location)
   }
   // incoming header
   auto* hdr = (elfsyms_header*) location;
+#ifdef TRUST_BUT_VERIFY
   // verify CRC sanity check
   const uint32_t temp_hdr = hdr->sanity_check;
   hdr->sanity_check = 0;
@@ -418,6 +396,7 @@ void _move_elf_syms_location(const void* location, void* new_location)
     relocs.strsize = 0;
     return;
   }
+#endif
   // update header
   relocs.syms    = (ElfSym*) new_location;
   relocs.entries = hdr->symtab_entries;
@@ -444,16 +423,10 @@ void _init_elf_parser()
 }
 
 extern "C"
-void __elf_validate_section(const void* location)
+void elf_check_symbols_ok()
 {
-  int size = _get_elf_section_datasize(location);
-  // stripped variant
-  if (size == 0) {
-    kprintf("ELF syms are considered stripped\n");
-    asm("cli; hlt");
-  }
-  // incoming header
-  auto* hdr = (elfsyms_header*) location;
+  extern char _ELF_SYM_START_;
+  auto* hdr = (elfsyms_header*) &_ELF_SYM_START_;
   // verify CRC sanity check
   const uint32_t temp_hdr = hdr->sanity_check;
   hdr->sanity_check = 0;
@@ -463,7 +436,7 @@ void __elf_validate_section(const void* location)
   {
     kprintf("ELF syms header CRC failed! "
             "(%08x vs %08x)\n", hdr->sanity_check, our_sanity);
-    asm("cli; hlt");
+    return;
   }
 
   // verify separate checksums of symbols and strings
@@ -478,22 +451,27 @@ void __elf_validate_section(const void* location)
     if (csum_strs != hdr->checksum_strs)
       kprintf("ELF string tables checksum failed! "
               "(%08x vs %08x)\n", csum_strs, hdr->checksum_strs);
-    uint32_t all = crc32c(hdr, sizeof(elfsyms_header) + size);
-    kprintf("Checksum ELF section: %08x\n", all);
-    asm("cli; hlt");
+    return;
   }
 }
 
 #ifdef ARCH_x86_64
+#include <kernel/memmap.hpp>
 #include <kernel/memory.hpp>
+#include <os.hpp>
 void elf_protect_symbol_areas()
 {
   char* src = (char*) parser.symtab.base;
   ptrdiff_t size = &parser.strtab.base[parser.strtab.size] - src;
-  if (size & 4095) size += 4096 - (size & 4095);
-  INFO2("* Protecting syms %p to %p (size %#zx)",
-        src, &parser.strtab.base[parser.strtab.size], size);
+  if (size % os::mem::min_psize()) size += os::mem::min_psize() - (size & (os::mem::min_psize()-1));
 
-  //os::mem::protect((uintptr_t) src, size, os::mem::Access::read);
+  INFO2("* Protecting syms %p to %p (size %#zx)\n", src, &src[size], size);
+  if (size == 0) return;
+
+  // create the ELF symbols & strings area
+  os::mem::vmmap().assign_range(
+      {(uintptr_t) src, (uintptr_t) src + size-1, "Symbols & strings"});
+
+  os::mem::protect((uintptr_t) src, size, os::mem::Access::read);
 }
 #endif

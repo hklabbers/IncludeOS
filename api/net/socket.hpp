@@ -1,19 +1,3 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2015-2017 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #pragma once
 #ifndef NET_SOCKET_HPP
@@ -106,56 +90,29 @@ public:
   bool is_empty() const noexcept
   { return (addr_.v6() == ip6::Addr::link_unspecified) and (port() == 0); }
 
-  /**
-   * Operator to check for equality relationship
-   *
-   * @param other
-   *  The socket to check for equality relationship
-   *
-   * @return true if the specified socket is equal, false otherwise
-   */
   bool operator==(const Socket& other) const noexcept
-  {
-    return addr_ == other.addr_ and port_ == other.port_;
-  }
+  { return addr_ == other.addr_ and port_ == other.port_; }
 
-  /**
-   * Operator to check for inequality relationship
-   *
-   * @param other
-   *  The socket to check for inequality relationship
-   *
-   * @return true if the specified socket is not equal, false otherwise
-   */
   bool operator!=(const Socket& other) const noexcept
   { return not (*this == other); }
 
-  /**
-   * Operator to check for less-than relationship
-   *
-   * @param other
-   *  The socket to check for less-than relationship
-   *
-   * @return true if this socket is less-than the specified socket,
-   * false otherwise
-   */
   bool operator<(const Socket& other) const noexcept
   {
-    return (addr_ < other.addr_)
-        or ((addr_ == other.addr_) and (port_ < other.port_));
+    return addr_ < other.addr_
+        or (addr_ == other.addr_ and port_ < other.port_);
   }
 
-  /**
-   * Operator to check for greater-than relationship
-   *
-   * @param other
-   *  The socket to check for greater-than relationship
-   *
-   * @return true if this socket is greater-than the specified socket,
-   * false otherwise
-   */
   bool operator>(const Socket& other) const noexcept
-  { return not (*this < other); }
+  {
+    return addr_ > other.addr_
+        or (addr_ == other.addr_ and port_ > other.port_);
+  }
+
+  bool operator<=(const Socket& other) const noexcept
+  { return (*this < other or *this == other); }
+
+  bool operator>=(const Socket& other) const noexcept
+  { return (*this > other or *this == other); }
 
 private:
   Address   addr_;

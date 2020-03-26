@@ -1,19 +1,3 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2015 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #include <os>
 #include <kernel/memory.hpp>
@@ -26,12 +10,12 @@ void Service::start(const std::string&)
 {
   INFO("Memmap", "Testing the kernel memory map");
 
-  auto& map = OS::memory_map();
+  auto& map = os::mem::vmmap();
   Expects(map.size());
 
   // Verify that you can't create any overlapping ranges
   const auto s = map.size();
-  int failed = 0;
+  size_t failed = 0;
   auto i = 0;
   for (auto it : map) {
     try {
@@ -40,7 +24,7 @@ void Service::start(const std::string&)
       int offs   = rand() % m.size() + 1;
       uintptr_t begin = i++ % 2 ? m.addr_start() + offs : m.addr_start() - offs;
       uintptr_t end   = begin + offs * 2;
-      Fixed_memory_range rng {begin, end, "Can't work"};
+      os::mem::Fixed_memory_range rng {begin, end, "Can't work"};
       map.assign_range(std::move(rng));
     } catch (const std::exception& e) {
       failed++;

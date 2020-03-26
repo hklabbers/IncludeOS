@@ -1,28 +1,14 @@
-﻿// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2015 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 // loosely based on iPXE driver as well as from Linux driver by VMware
 #include "vmxnet3.hpp"
 #include "vmxnet3_queues.hpp"
 
 #include <kernel/events.hpp>
+#include <arch.hpp>
 #include <smp>
 #include <statman>
 #include <info>
+#include <atomic>
 #include <cassert>
 #include <malloc.h>
 static std::vector<vmxnet3*> deferred_devs;
@@ -516,13 +502,13 @@ bool vmxnet3::receive_handler(const int Q)
     if (gen != (comp.flags & VMXNET3_RXCF_GEN)) break;
 
     /* prevent speculative pre read ahead of comp content*/
-    __arch_read_memory_barrier();
+    std::atomic_thread_fence(std::memory_order_acquire);
 
     rx[Q].consumers++;
     rx[Q].prod_count--;
 
     int desc = comp.index % vmxnet3::NUM_RX_DESC;
-    
+
     // Handle case of empty packet
     if (UNLIKELY((comp.len & (VMXNET3_MAX_BUFFER_LEN-1)) == 0)) {
       //TODO assert / log if eop and sop are not set in empty packet.
@@ -534,7 +520,7 @@ bool vmxnet3::receive_handler(const int Q)
       stat_rx_zero_dropped++;
       break;
     }
-    
+
     // mask out length
     int len = comp.len & (VMXNET3_MAX_BUFFER_LEN-1);
 
@@ -703,9 +689,9 @@ void vmxnet3::move_to_this_cpu()
   }
 }
 
-#include <kernel/pci_manager.hpp>
+#include <hw/pci_manager.hpp>
 __attribute__((constructor))
 static void register_func()
 {
-  PCI_manager::register_nic(PCI::VENDOR_VMWARE, PRODUCT_ID, &vmxnet3::new_instance);
+  hw::PCI_manager::register_nic(PCI::VENDOR_VMWARE, PRODUCT_ID, &vmxnet3::new_instance);
 }

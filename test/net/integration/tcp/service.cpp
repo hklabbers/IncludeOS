@@ -1,23 +1,6 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2015 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #include <os>
-#include <net/inet.hpp>
-#include <net/super_stack.hpp>
+#include <net/interfaces>
 #include <vector>
 #include <info>
 #include <timers>
@@ -28,7 +11,7 @@ using namespace util;        // For KiB/MiB/GiB literals
 tcp::Connection_ptr client;
 
 static Inet& stack()
-{ return Super_stack::get(0); }
+{ return Interfaces::get(0); }
 
 /*
   TEST VARIABLES
@@ -75,12 +58,12 @@ void OUTGOING_TEST_INTERNET(const HostAddress& address) {
   // This needs correct setup to work
   INFO("TEST", "Outgoing Internet Connection (%s:%u)", address.first.c_str(), address.second);
   stack().resolve(address.first,
-    [port](auto ip_address, const Error&) {
-      CHECK(ip_address != 0, "Resolved host");
+    [port](auto res, const Error&) {
+      CHECK(res != nullptr, "Resolved host");
 
-      if(ip_address != 0)
+      if(res and res->has_addr())
       {
-        stack().tcp().connect({ip_address, port})
+        stack().tcp().connect({res->get_first_addr(), port})
           ->on_connect([](tcp::Connection_ptr conn)
           {
             CHECKSERT(conn != nullptr, "Connected");
@@ -159,11 +142,8 @@ void Service::start()
     {  10,  0,  0,  1 },  // Gateway
     {   8,  8,  8,  8 }   // DNS
   );
-  inet.network_config6(
-    {  0xfe80, 0, 0, 0, 0xe823, 0xfcff, 0xfef4, 0x85bd },   // IP6
-    64,                                                     // Prefix6
-    {  0xfe80,  0,  0, 0, 0xe823, 0xfcff, 0xfef4, 0x83e7 }  // Gateway6
-  );
+  inet.add_addr({"fe80::e823:fcff:fef4:85bd"}, 64);
+  static ip6::Addr gateway{"fe80::e823:fcff:fef4:83e7"};
 
   auto& tcp = inet.tcp();
   // reduce test duration
@@ -214,7 +194,8 @@ void Service::start()
   /*
     TEST: Server should be bound.
   */
-  CHECK(tcp.listening_ports() == 1, "One (1) open port");
+
+  CHECKSERT(tcp.listening_ports() >= 1, "One or more open port");
 
   /*
     TEST: Send and receive big string.
@@ -264,7 +245,7 @@ void Service::start()
   /*
     TEST: More servers should be bound.
   */
-  CHECK(tcp.listening_ports() == 3, "Three (3) open ports");
+  CHECKSERT(tcp.listening_ports() >= 3, "Three or more open ports");
 
   /*
     TEST: Connection (Status etc.) and Active Close
@@ -290,7 +271,7 @@ void Service::start()
         [conn] (auto) {
             CHECKSERT(conn->is_state({"TIME-WAIT"}), "State: TIME-WAIT");
             INFO("Test 4", "Succeeded. Trigger TEST5");
-            OUTGOING_TEST({Inet::stack().gateway6(), TEST5});
+            OUTGOING_TEST({gateway, TEST5});
           });
 
         Timers::oneshot(5s, [] (Timers::id_t) { FINISH_TEST(); });

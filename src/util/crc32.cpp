@@ -1,19 +1,3 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2015 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #include <util/crc32.hpp>
 #include <cstdint>
@@ -21,11 +5,15 @@
 #include <common>
 
 /** Intel (iSCSI) or vanilla-polynomial, DONT mix with other code **/
-#include <immintrin.h>
+#if defined(ARCH_x86_64) || defined(ARCH_i686)
+  #include <immintrin.h>
+#endif
+
 inline bool ____is__aligned(const uint8_t* buffer, const int align) noexcept {
   return (((uintptr_t) buffer) & (align-1)) == 0;
 }
 
+#if defined(ARCH_x86_64) || defined(ARCH_i686)
 __attribute__ ((target ("sse4.2")))
 uint32_t crc32c_hw(const uint8_t* buffer, size_t len)
 {
@@ -57,6 +45,7 @@ uint32_t crc32c_hw(const uint8_t* buffer, size_t len)
   }
   return hash ^ 0xFFFFFFFF;
 }
+#endif
 
 uint32_t crc32c_sw(uint32_t partial, const char* buf, size_t len)
 {

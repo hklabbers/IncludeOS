@@ -214,25 +214,6 @@ void VirtioBlk::shipit(request_t* vbr) {
   (*this->requests)++;
 }
 
-void VirtioBlk::read (block_t blk, on_read_func func) {
-  // Virtio Std. § 5.1.6.3
-  auto* vbr = new request_t(blk,
-    request_handler_t::make_packed(
-    [this, func] (uint8_t* data) {
-      if (data != nullptr)
-        func(fs::construct_buffer(data, data + block_size()));
-      else
-        func(nullptr);
-    }));
-
-  if (free_space()) {
-    shipit(vbr);
-    req.kick();
-  }
-  else {
-    jobs.push_back(vbr);
-  }
-}
 void VirtioBlk::read (block_t blk, size_t cnt, on_read_func func)
 {
   // create big buffer for collecting all the disk data
@@ -306,11 +287,11 @@ void VirtioBlk::deactivate()
   this->Virtio::reset();
 }
 
-#include <kernel/pci_manager.hpp>
+#include <hw/pci_manager.hpp>
 
 /** Global constructor - register VirtioBlk's driver factory at the PCI_manager */
 struct Autoreg_virtioblk {
   Autoreg_virtioblk() {
-    PCI_manager::register_blk(PCI::VENDOR_VIRTIO, 0x1001, &VirtioBlk::new_instance);
+    hw::PCI_manager::register_blk(PCI::VENDOR_VIRTIO, 0x1001, &VirtioBlk::new_instance);
   }
 } autoreg_virtioblk;

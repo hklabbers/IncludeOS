@@ -1,20 +1,4 @@
 // -*- C++ -*-
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2017 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #ifndef UTIL_BITOPS_HPP
 #define UTIL_BITOPS_HPP
@@ -25,9 +9,7 @@
 namespace util {
 inline namespace bitops {
 
-//
 // Enabling bitmask ops for enum class etc.
-//
 
 template<typename E>
 struct enable_bitmask_ops{
@@ -110,9 +92,7 @@ struct enable_bitmask_ops<uintptr_t> {
 
 namespace bits {
 
-//
 // Various bit operations
-//
 // Number of bits per word
 constexpr int bitcnt()
 { return sizeof(uintptr_t) * 8; }
@@ -175,20 +155,23 @@ inline uintptr_t roundto(uintptr_t x)
 inline constexpr uintptr_t roundto(uintptr_t M, uintptr_t x)
 { return multip(M,x) * M; }
 
+inline constexpr uintptr_t align(uintptr_t M, uintptr_t x)
+{ return roundto(M, x); }
+
 // Determine if ptr is A-aligned
 template <uintptr_t A>
-bool is_aligned(uintptr_t ptr)
+bool is_aligned(uintptr_t ptr) noexcept
 {
   return (ptr & (A - 1)) == 0;
 }
 
 template <uintptr_t A>
-bool is_aligned(void* ptr)
+bool is_aligned(void* ptr) noexcept
 {
   return is_aligned<A>(reinterpret_cast<uintptr_t>(ptr));
 }
 
-inline bool is_aligned(uintptr_t A, uintptr_t ptr)
+inline bool is_aligned(uintptr_t A, uintptr_t ptr) noexcept
 {
   return (ptr & (A - 1)) == 0;
 }

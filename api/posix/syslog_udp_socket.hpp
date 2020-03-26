@@ -1,18 +1,3 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2018 IncludeOS AS, Oslo, Norway
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #pragma once
 #ifndef POSIX_SYSLOG_UDP_SOCKET_HPP
@@ -20,7 +5,7 @@
 
 #include <posix/unix_fd_impl.hpp>
 #include <net/inet>
-#include <net/ip4/udp.hpp>
+#include <net/udp/udp.hpp>
 
 class Syslog_UDP_socket : public Unix_FD_impl {
 public:
@@ -36,7 +21,7 @@ public:
 
 private:
   net::Inet&  stack;
-  net::UDPSocket*       udp;
+  net::udp::Socket*     udp;
   const net::ip4::Addr  addr;
   const uint16_t        port;
 };

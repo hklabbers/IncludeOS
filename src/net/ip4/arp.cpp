@@ -1,19 +1,3 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2015 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 //#define ARP_DEBUG 1
 #ifdef ARP_DEBUG
@@ -100,7 +84,7 @@ namespace net {
 
   }
 
-  void Arp::cache(IP4::addr ip, MAC::Addr mac) {
+  void Arp::cache(ip4::Addr ip, MAC::Addr mac) {
     PRINT("<Arp> Caching IP %s for %s\n", ip.str().c_str(), mac.str().c_str());
 
     auto entry = cache_.find(ip);
@@ -125,7 +109,7 @@ namespace net {
   }
 
 
-  void Arp::arp_respond(header* hdr_in, IP4::addr ack_ip) {
+  void Arp::arp_respond(header* hdr_in, ip4::Addr ack_ip) {
     PRINT("\t IP Match. Constructing ARP Reply\n");
 
     // Stat increment replies sent
@@ -148,7 +132,7 @@ namespace net {
     linklayer_out_(std::move(res), dest, Ethertype::ARP);
   }
 
-  void Arp::transmit(Packet_ptr pckt, IP4::addr next_hop) {
+  void Arp::transmit(Packet_ptr pckt, ip4::Addr next_hop) {
 
     Expects(pckt->size());
 
@@ -206,7 +190,7 @@ namespace net {
   }
 
 
-  void Arp::await_resolution(Packet_ptr pckt, IP4::addr next_hop) {
+  void Arp::await_resolution(Packet_ptr pckt, ip4::Addr next_hop) {
     auto queue =  waiting_packets_.find(next_hop);
     PRINT("<ARP await> Waiting for resolution of %s\n", next_hop.str().c_str());
     if (queue != waiting_packets_.end()) {
@@ -224,7 +208,7 @@ namespace net {
     }
   }
 
-  void Arp::arp_resolve(IP4::addr next_hop) {
+  void Arp::arp_resolve(ip4::Addr next_hop) {
     PRINT("<ARP RESOLVE> %s\n", next_hop.str().c_str());
 
     auto req = static_unique_ptr_cast<PacketArp>(inet_.create_packet());
@@ -243,7 +227,7 @@ namespace net {
   void Arp::flush_expired()
   {
     PRINT("<ARP> Flushing expired entries\n");
-    std::vector<IP4::addr> expired;
+    std::vector<ip4::Addr> expired;
     for (auto ent : cache_) {
       if (ent.second.expired()) {
         expired.push_back(ent.first);

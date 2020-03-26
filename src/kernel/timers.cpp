@@ -1,6 +1,6 @@
 #include <kernel/timers.hpp>
 
-#include <kernel/os.hpp>
+#include <os.hpp>
 #include <kernel/events.hpp>
 #include <kernel/rtc.hpp>
 #include <service>
@@ -64,6 +64,8 @@ static bool signal_ready = false;
 
 struct alignas(SMP_ALIGN) timer_system
 {
+  timer_system() = default;
+  timer_system(timer_system&&) = default;
   void free_timer(Timers::id_t);
   void sched_timer(duration_t when, Timers::id_t);
 
@@ -76,12 +78,14 @@ struct alignas(SMP_ALIGN) timer_system
   // timers sorted by timestamp
   std::multimap<duration_t, Timers::id_t> scheduled;
   /** Stats */
-  int64_t*  oneshot_started = nullptr;
-  int64_t*  oneshot_stopped = nullptr;
-  uint32_t* periodic_started = nullptr;
-  uint32_t* periodic_stopped = nullptr;
+  int64_t  stat64 = 0;
+  int64_t*  oneshot_started = &stat64;
+  int64_t*  oneshot_stopped = &stat64;
+  uint32_t* periodic_started = (uint32_t*) &stat64;
+  uint32_t* periodic_stopped = (uint32_t*) &stat64;
 };
-static SMP::Array<timer_system> systems;
+static std::vector<timer_system> systems;
+SMP_RESIZE_EARLY_GCTOR(systems);
 
 void timer_system::free_timer(Timers::id_t id)
 {

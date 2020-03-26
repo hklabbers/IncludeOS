@@ -1,19 +1,3 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2015 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #include "apic.hpp"
 #include "ioapic.hpp"
@@ -23,6 +7,7 @@
 #include "smp.hpp"
 #include <kernel/cpuid.hpp>
 #include <kernel/events.hpp>
+#include <kernel.hpp>
 #include <kprint>
 #include <info>
 //#define ENABLE_KVM_PV_EOI
@@ -136,7 +121,7 @@ namespace x86
       // NOTE: @bus_source is the IOAPIC number
       if (redir.irq_source == irq)
       {
-        if (OS::is_panicking() == false)
+        if (kernel::is_panicking() == false)
         {
           INFO2("Enabled redirected entry %u ioapic %u -> %u on apic %u",
               redir.global_intr, redir.bus_source, irq, get().get_id());
@@ -145,7 +130,7 @@ namespace x86
         return;
       }
     }
-    if (OS::is_panicking() == false)
+    if (kernel::is_panicking() == false)
     {
       INFO2("Enabled non-redirected IRQ %u on apic %u", irq, get().get_id());
     }

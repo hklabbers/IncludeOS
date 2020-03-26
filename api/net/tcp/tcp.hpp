@@ -1,19 +1,3 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2015-2017 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #pragma once
 #ifndef NET_TCP_HPP
@@ -181,7 +165,7 @@ namespace net {
      *
      * @param[in]  <unnamed>  A network packet
      */
-    void receive(net::Packet_ptr);
+    void receive4(net::Packet_ptr);
 
     /**
      * @brief      Receive a Packet from the network layer (IP6)
@@ -197,8 +181,8 @@ namespace net {
      *
      * @param[in]  del   A downstream delegate
      */
-    void set_network_out(downstream del)
-    { network_layer_out_ = del; }
+    void set_network_out4(downstream del)
+    { network_layer_out4_ = del; }
 
     void set_network_out6(downstream del)
     { network_layer_out6_ = del; }
@@ -424,8 +408,7 @@ namespace net {
      *
      * @return     The MSS
      */
-    uint16_t MSS() const
-    { return network().MDDS() - sizeof(tcp::Header); }
+    uint16_t MSS(const Protocol) const;
 
     /**
      * @brief      Returns a string representation of the listeners and connections.
@@ -548,7 +531,7 @@ namespace net {
 
     Port_utils& ports_;
 
-    downstream  network_layer_out_;
+    downstream  network_layer_out4_;
     downstream  network_layer_out6_;
 
     /** Internal writeq - connections gets queued in the wait for packets and recvs offer */

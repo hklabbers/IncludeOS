@@ -1,19 +1,3 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2015-2016 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #include <os>
 #include <stdio.h>
@@ -38,7 +22,7 @@ void Service::start(const std::string&)
 
   // auto-init filesystem
   disk->init_fs(
-  [] (fs::error_t err, auto& fs)
+  [] (fs::error_t err, fs::File_system& fs)
   {
     if (err) {
       printf("Init error: %s\n", err.to_string().c_str());
@@ -58,7 +42,7 @@ void Service::start(const std::string&)
   });
   // re-init on MBR (sigh)
   disk->init_fs(disk->MBR,
-  [] (fs::error_t err, auto& fs)
+  [] (fs::error_t err, fs::File_system& fs)
   {
     CHECKSERT(!err, "Filesystem initialized on VBR1");
 
@@ -69,7 +53,7 @@ void Service::start(const std::string&)
     CHECKSERT(!ent.is_dir(), "Entity is not directory");
     CHECKSERT(ent.name() == "banana.txt", "Name is 'banana.txt'");
 
-    printf("Original banana (%ld bytes):\n%s\n",
+    printf("Original banana (%zu bytes):\n%s\n",
             internal_banana.size(), internal_banana.c_str());
 
     // try reading banana-file
@@ -77,7 +61,7 @@ void Service::start(const std::string&)
     CHECKSERT(!buf.error(), "No error reading file");
 
     auto banana = buf.to_string();
-    printf("New banana (%ld bytes):\n%s\n", banana.size(), banana.c_str());
+    printf("New banana (%zu bytes):\n%s\n", banana.size(), banana.c_str());
 
     CHECKSERT(banana == internal_banana, "Correct banana #1");
 
@@ -93,7 +77,7 @@ void Service::start(const std::string&)
       // verify that it matches the same location in test-string
       test = ((char) buf.data()[0] == internal_banana[i]);
       if (!test) {
-        printf("!! Random access read test failed on i = %u\n", i);
+        printf("!! Random access read test failed on i = %zu\n", i);
         break;
       }
     }

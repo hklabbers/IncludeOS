@@ -1,18 +1,3 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2017 IncludeOS AS, Oslo, Norway
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 // #define DEBUG_UNIT
 #ifdef DEBUG_UNIT
@@ -135,7 +120,7 @@ public:
       __pml4->~Pml4();
       free(__pml4);
       __pml4 = nullptr;
-      OS::memory_map().clear();
+      os::mem::vmmap().clear();
     }
   }
 };
@@ -146,7 +131,7 @@ CASE ("os::mem Using map and unmap")
   using namespace util;
 
   Default_paging p{};
-  auto initial_entries = OS::memory_map().map();
+  auto initial_entries = os::mem::vmmap().map();
 
   // Create a desired mapping
   mem::Map m;
@@ -157,7 +142,7 @@ CASE ("os::mem Using map and unmap")
   m.page_sizes = 4_KiB | 2_MiB;
 
   // It shouldn't exist in the memory map
-  auto key = OS::memory_map().in_range(m.lin);
+  auto key = os::mem::vmmap().in_range(m.lin);
   EXPECT(key == 0);
 
   // Map it and verify
@@ -167,15 +152,15 @@ CASE ("os::mem Using map and unmap")
   EXPECT(mapping.phys == m.phys);
   EXPECT(mapping.flags == m.flags);
   EXPECT((mapping.page_sizes & m.page_sizes) != 0);
-  EXPECT(OS::memory_map().map().size() == initial_entries.size() + 1);
+  EXPECT(os::mem::vmmap().map().size() == initial_entries.size() + 1);
 
   // Expect size is requested size rounded up to nearest page
   EXPECT(mapping.size == bits::roundto(4_KiB, m.size));
 
   // It should now exist in the OS memory map
-  key = OS::memory_map().in_range(m.lin);
+  key = os::mem::vmmap().in_range(m.lin);
   EXPECT(key == m.lin);
-  auto& entry = OS::memory_map().at(key);
+  auto& entry = os::mem::vmmap().at(key);
   EXPECT(entry.size() == m.size);
   EXPECT(entry.name() == "Unittest 1");
 
@@ -188,13 +173,13 @@ CASE ("os::mem Using map and unmap")
   m.lin += bits::roundto(4_KiB, m.size);
   EXPECT(mem::map(m, "Unittest 4").size == bits::roundto(4_KiB, m.size));
   EXPECT(mem::unmap(m.lin).size == bits::roundto(4_KiB, m.size));
-  EXPECT(OS::memory_map().map().size() == initial_entries.size() + 1);
+  EXPECT(os::mem::vmmap().map().size() == initial_entries.size() + 1);
 
   // You can still map below
   m.lin = 5_GiB - bits::roundto(4_KiB, m.size);
   EXPECT(mem::map(m, "Unittest 5").size == bits::roundto(4_KiB, m.size));
   EXPECT(mem::unmap(m.lin).size == bits::roundto(4_KiB, m.size));
-  EXPECT(OS::memory_map().map().size() == initial_entries.size() + 1);
+  EXPECT(os::mem::vmmap().map().size() == initial_entries.size() + 1);
 
   m.lin = 5_GiB;
 
@@ -204,7 +189,7 @@ CASE ("os::mem Using map and unmap")
   EXPECT(un.phys == 0);
   EXPECT(un.flags == mem::Access::none);
   EXPECT(un.size == mapping.size);
-  key = OS::memory_map().in_range(m.lin);
+  key = os::mem::vmmap().in_range(m.lin);
   EXPECT(key == 0);
 
   // Remap and verify

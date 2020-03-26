@@ -1,37 +1,18 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2015 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #include <kernel/events.hpp>
+#include <arch.hpp>
 #include <algorithm>
 #include <cassert>
 #include <statman>
 #include <smp>
 //#define DEBUG_SMP
 
-static SMP::Array<Events> managers;
+static std::vector<Events> managers;
+SMP_RESIZE_EARLY_GCTOR(managers);
 
 Events& Events::get(int cpuid)
 {
-#ifdef INCLUDEOS_SMP_ENABLE
   return managers.at(cpuid);
-#else
-  (void) cpuid;
-  return managers[0];
-#endif
 }
 Events& Events::get()
 {
@@ -40,9 +21,6 @@ Events& Events::get()
 
 void Events::init_local()
 {
-  std::memset(event_subs.data(), 0, sizeof(event_subs));
-  std::memset(event_pend.data(), 0, sizeof(event_pend));
-
   if (SMP::cpu_id() == 0)
   {
     // prevent legacy IRQs from being free for taking
@@ -94,13 +72,15 @@ void Events::unsubscribe(uint8_t evt)
   throw std::out_of_range("Event was not in sublist?");
 }
 
-void Events::defer(event_callback cb)
+void Events::defer(event_callback callback)
 {
   auto ev = subscribe(nullptr);
   subscribe(ev, event_callback::make_packed(
-    [this, ev, cb] () {
-      unsubscribe(ev);
-      cb();
+    [this, ev, callback] () {
+      callback();
+      // NOTE: we cant unsubscribe before after callback(),
+      // because unsubscribe() deallocates event storage
+      this->unsubscribe(ev);
     }));
   // and trigger it once
   event_pend[ev] = true;

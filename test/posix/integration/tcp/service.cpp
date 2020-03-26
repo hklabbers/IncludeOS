@@ -1,19 +1,3 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2015-2016 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #include <service>
 #include <cstdio>
@@ -23,7 +7,7 @@
 #include <cassert>
 #include <errno.h>
 #include <unistd.h>
-#include <net/inet>
+#include <net/interfaces>
 
 const uint16_t PORT = 1042;
 const uint16_t OUT_PORT = 4242;
@@ -31,9 +15,10 @@ const uint16_t BUFSIZE = 2048;
 
 int main()
 {
-  auto&& inet =  net::Inet::ifconfig({  10,  0,  0, 57 },   // IP
-                                     { 255, 255, 0,  0 },   // Netmask
-                                     {  10,  0,  0,  4 });  // Gateway
+  auto&& inet = net::Interfaces::get(0);
+  inet.network_config({  10,  0,  0, 57 },   // IP
+                      { 255, 255, 0,  0 },   // Netmask
+                      {  10,  0,  0,  4 });  // Gateway
 
   INFO("TCP Socket", "bind(%u)", PORT);
 
@@ -88,6 +73,9 @@ int main()
   CHECKSERT(res == 0, "No data received (closing)");
 
   res = shutdown(cfd, SHUT_RDWR);
+  CHECKSERT(res < 0, "Shutdown on closed socket fails");
+  res = close(cfd);
+  CHECKSERT(res == 0, "Close socket");
 
   // We cant see if the buffer now is empty without blocking the test
 
@@ -111,6 +99,9 @@ int main()
   const char *my_message = "Only hipsters uses POSIX";
   res = send(cfd, my_message, strlen(my_message), 0);
   CHECKSERT(res > 0, "Send works when connected (verified by script)");
+
+  res = close(cfd);
+  CHECKSERT(res == 0, "Closed client connection");
 
   return 0;
 }

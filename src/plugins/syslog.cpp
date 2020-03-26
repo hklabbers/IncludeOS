@@ -1,19 +1,3 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2018 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 // This file contains a plugin for automatically mounting
 // a given syslog implementation to the virtual filesystem (VFS)
@@ -22,7 +6,7 @@
 #include <fs/vfs.hpp>
 #include <posix/syslog_print_socket.hpp>
 #include <posix/syslog_udp_socket.hpp>
-#include <net/super_stack.hpp>
+#include <net/interfaces.hpp>
 
 #ifndef RAPIDJSON_HAS_STDSTRING
   #define RAPIDJSON_HAS_STDSTRING 1
@@ -98,7 +82,7 @@ static void syslog_mount()
   Expects(cfg.HasMember("iface") && "Missing iface (index)");
   Expects(cfg.HasMember("address") && "Missing address");
 
-  auto& stack = net::Super_stack::get(cfg["iface"].GetInt());
+  auto& stack = net::Interfaces::get(cfg["iface"].GetInt());
   const net::ip4::Addr addr{cfg["address"].GetString()};
   const uint16_t port = cfg.HasMember("port") ?
     cfg["port"].GetUint() : default_port;
@@ -109,5 +93,5 @@ static void syslog_mount()
 #include <os>
 __attribute__((constructor))
 static void syslog_plugin() {
-  OS::register_plugin(syslog_mount, "Syslog Unix backend");
+  os::register_plugin(syslog_mount, "Syslog Unix backend");
 }

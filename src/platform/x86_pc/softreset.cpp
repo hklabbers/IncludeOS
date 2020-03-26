@@ -1,6 +1,7 @@
 #include <os>
 #include <kprint>
 #include <kernel/memory.hpp>
+#include <kernel.hpp>
 #include <util/crc32.hpp>
 using namespace util::literals;
 
@@ -16,15 +17,19 @@ extern char _end;
 struct softreset_t
 {
   uint32_t  checksum;
+  uint32_t  liveupdate_size;
   uint64_t  liveupdate_loc;
   uint64_t  high_mem;
   KHz       cpu_freq;
   uint32_t  apic_ticks;
-  uint64_t  extra;
   uint32_t  extra_len;
+  uint64_t  extra;
+  // Memory map FMA
+  uint32_t  mmap_size;
+  char      mmap_buffer[0];
 };
 
-bool OS::is_softreset_magic(uint32_t value)
+bool kernel::is_softreset_magic(uint32_t value)
 {
   return value == SOFT_RESET_MAGIC;
 }
@@ -32,15 +37,16 @@ bool OS::is_softreset_magic(uint32_t value)
 __attribute__((weak))
 void softreset_service_handler(const void*, size_t) {}
 
-uintptr_t OS::softreset_memory_end(intptr_t addr)
+uintptr_t kernel::softreset_memory_end(intptr_t addr)
 {
   auto* data = (softreset_t*) addr;
-  assert(data->high_mem > (uintptr_t) &_end);
-  //kprintf("Restored memory end: %p\n", data->high_mem);
+  if (data->high_mem < (uintptr_t) &_end + 0x100000) {
+    kprintf("WARNING: Not enough memory for ELF + 1mb heap!\n");
+  }
   return data->high_mem;
 }
 
-void OS::resume_softreset(intptr_t addr)
+void kernel::resume_softreset(intptr_t addr)
 {
   auto* data = (softreset_t*) addr;
 
@@ -56,13 +62,14 @@ void OS::resume_softreset(intptr_t addr)
   data->checksum = csum_copy;
 
   /// restore known values
-  uintptr_t lu_phys = data->liveupdate_loc;
-  OS::setup_liveupdate(lu_phys);
-  OS::memory_end_     = data->high_mem;
-  OS::heap_max_       = OS::memory_end_ - 1;
-  OS::cpu_khz_        = data->cpu_freq;
+  kernel::state().liveupdate_phys = data->liveupdate_loc;
+  kernel::state().liveupdate_size = data->liveupdate_size;
+  kernel::state().is_live_updated = true;
+  kernel::state().cpu_khz = data->cpu_freq;
   x86::apic_timer_set_ticks(data->apic_ticks);
-  OS::m_is_live_updated = true;
+
+  kernel::state().mmap_size = data->mmap_size;
+  kernel::state().mmap_addr = data->mmap_buffer;
 
   /// call service-specific softreset handler
   softreset_service_handler((void*) data->extra, data->extra_len);
@@ -71,15 +78,19 @@ void OS::resume_softreset(intptr_t addr)
 extern "C"
 void* __os_store_soft_reset(void* extra, size_t extra_len)
 {
+  uintptr_t memory_end = kernel::state().liveupdate_phys + kernel::state().liveupdate_size;
   // store softreset data in low memory
   auto* data = (softreset_t*) SOFT_RESET_LOCATION;
   data->checksum    = 0;
-  data->liveupdate_loc = os::mem::virt_to_phys((uintptr_t) OS::liveupdate_storage_area());
-  data->high_mem    = OS::memory_end();
-  data->cpu_freq    = OS::cpu_freq();
+  data->liveupdate_loc  = kernel::state().liveupdate_phys;
+  data->liveupdate_size = kernel::state().liveupdate_size;
+  data->high_mem    = memory_end;
+  data->cpu_freq    = os::cpu_freq();
   data->apic_ticks  = x86::apic_timer_get_ticks();
-  data->extra       = (uint64_t) extra;
   data->extra_len   = extra_len;
+  data->extra       = (uint64_t) extra;
+  data->mmap_size   = kernel::state().mmap_size;
+  std::memcpy(data->mmap_buffer, kernel::state().mmap_addr, data->mmap_size);
 
   uint32_t csum = crc32_fast(data, sizeof(softreset_t));
   data->checksum = csum;

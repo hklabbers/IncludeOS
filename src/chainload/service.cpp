@@ -1,22 +1,6 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2017 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
-#include <kernel/os.hpp>
-#include <kernel/syscalls.hpp>
+#include <os.hpp>
+#include <boot/multiboot.h>
 #include <util/elf_binary.hpp>
 #include <service>
 #include <cstdint>
@@ -56,7 +40,7 @@ void promote_mod_to_kernel()
 void Service::start()
 {
 
-  auto mods = OS::modules();
+  auto mods = os::modules();
   MYINFO("%u-bit chainloader found %u modules",
         sizeof(void*) * 8, mods.size());
 
@@ -65,7 +49,7 @@ void Service::start()
     exit(1);
   }
 
-  multiboot_module_t binary = mods[0];
+  auto binary = mods[0];
 
   Elf_binary<Elf64> elf (
       {(char*)binary.mod_start,
@@ -91,7 +75,7 @@ void Service::start()
   memcpy(hotswap_addr,(void*)&hotswap, &__hotswap_end - (char*)&hotswap );
 
   MYINFO("Preparing for jump to %s. Multiboot magic: 0x%x, addr 0x%x",
-         (char*)binary.cmdline, __multiboot_magic, __multiboot_addr);
+         (char*)binary.params, __multiboot_magic, __multiboot_addr);
 
   // Prepare to load ELF segment
   char* base  = (char*)binary.mod_start + init_seg.p_offset;
@@ -108,7 +92,7 @@ void Service::start()
   // Call hotswap, overwriting current kernel
   ((decltype(&hotswap))hotswap_addr)(base, len, dest, start, __multiboot_magic, __multiboot_addr);
 
-  panic("Should have jumped\n");
+  os::panic("Should have jumped\n");
 
   __builtin_unreachable();
 }

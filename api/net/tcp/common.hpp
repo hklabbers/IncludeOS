@@ -1,19 +1,3 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2015-2016 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #pragma once
 #ifndef NET_TCP_COMMON_HPP
@@ -34,7 +18,7 @@ namespace net {
     // default size of TCP window - how much data can be "in flight" (unacknowledged)
     static constexpr uint16_t default_window_size {0xffff};
     // window scaling + window size
-    static constexpr uint8_t  default_window_scaling {7};
+    static constexpr uint8_t  default_window_scaling {5};
     static constexpr uint32_t default_ws_window_size {8192 << default_window_scaling};
     // use of timestamps option
     static constexpr bool     default_timestamps {true};
@@ -42,7 +26,8 @@ namespace net {
     static constexpr bool     default_sack {true};
     static constexpr size_t   default_sack_entries{32};
     // maximum size of a TCP segment - later set based on MTU or peer
-    static constexpr uint16_t default_mss {536};
+    static constexpr uint16_t default_mss     {536};
+    static constexpr uint16_t default_mss_v6  {1220};
     // the maximum amount of half-open connections per port (listener)
     static constexpr size_t   default_max_syn_backlog {64};
     // clock granularity of the timestamp value clock

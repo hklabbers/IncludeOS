@@ -1,19 +1,3 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2015-2017 IncludeOS AS, Oslo, Norway
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 #pragma once
 #ifndef UTIL_SYSLOG_FACILITY_HPP
 #define UTIL_SYSLOG_FACILITY_HPP
@@ -25,7 +9,7 @@
 #include <map>
 
 #include <syslog.h>         // POSIX symbolic constants
-#include <net/ip4/udp_socket.hpp>  // For private attribute UDPSocket* in Syslog_udp
+#include <net/udp/socket.hpp>  // For private attribute UDPSocket* in Syslog_udp
 
 const int MUL_VAL = 8;
 const std::map<int, std::string> pri_colors = {
@@ -45,9 +29,9 @@ const std::string COLOR_END = "\033[0m";
 class Syslog_facility {
 public:
   virtual void syslog(const std::string&) = 0;
-  virtual void settings(const net::UDP::addr_t, const net::UDP::port_t) = 0;
-  virtual net::UDP::addr_t ip() const noexcept = 0;
-  virtual net::UDP::port_t port() const noexcept = 0;
+  virtual void settings(const net::Addr&, const uint16_t) = 0;
+  virtual const net::Addr& ip() const noexcept = 0;
+  virtual uint16_t port() const noexcept = 0;
   virtual void open_socket() = 0;
   virtual void close_socket() = 0;
   virtual std::string build_message_prefix(const std::string&) = 0;
@@ -146,16 +130,16 @@ private:
 
 class Syslog_udp : public Syslog_facility {
 public:
-  inline void settings(const net::UDP::addr_t dest_ip, const net::UDP::port_t dest_port) {
+  inline void settings(const net::Addr& dest_ip, const uint16_t dest_port) {
     ip_ = dest_ip;
     port_ = dest_port;
   }
 
-  inline net::UDP::addr_t ip() const noexcept {
+  inline const net::Addr& ip() const noexcept {
     return ip_;
   }
 
-  inline net::UDP::port_t port() const noexcept {
+  inline uint16_t port() const noexcept {
     return port_;
   }
 
@@ -175,9 +159,9 @@ public:
   ~Syslog_udp();
 
 private:
-  net::UDP::addr_t ip_{};
-  net::UDP::port_t port_{0};
-  net::UDPSocket* sock_ = nullptr;
+  net::Addr ip_{};
+  uint16_t port_{0};
+  net::udp::Socket* sock_ = nullptr;
 
 }; // < Syslog_udp
 
@@ -186,9 +170,9 @@ private:
 class Syslog_print : public Syslog_facility {
 public:
   void syslog(const std::string& log_message) override;
-  void settings(const net::UDP::addr_t, const net::UDP::port_t) override {}
-  net::UDP::addr_t ip() const noexcept override { return net::ip4::Addr::addr_any; }
-  net::UDP::port_t port() const noexcept override { return 0; }
+  void settings(const net::Addr&, const uint16_t) override {}
+  const net::Addr& ip() const noexcept override { return net::Addr::addr_any; }
+  uint16_t port() const noexcept override { return 0; }
   void open_socket() override {}
   void close_socket() override {}
 

@@ -1,19 +1,3 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2015 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #include <fs/disk.hpp>
 #include <fs/mbr.hpp>
@@ -65,9 +49,9 @@ namespace fs {
       hw::Block_device::on_read_func::make_packed(
       [this, func] (hw::Block_device::buffer_t data)
       {
-        if (!data) {
+        if (UNLIKELY(!data)) {
           // TODO: error-case for unable to read MBR
-          func({ error_t::E_IO, "Unable to read MBR"}, fs());
+          func({ error_t::E_IO, "Unable to read MBR"}, *filesys);
           return;
         }
 
@@ -134,9 +118,9 @@ namespace fs {
         hw::Block_device::on_read_func::make_packed(
         [this, part, func] (hw::Block_device::buffer_t data)
         {
-          if (!data) {
+          if (UNLIKELY(!data)) {
             // TODO: error-case for unable to read MBR
-            func({ error_t::E_IO, "Could not read MBR" }, fs());
+            func({ error_t::E_IO, "Could not read MBR" }, *filesys);
             return;
           }
 

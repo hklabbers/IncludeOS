@@ -1,2 +1,2 @@
 #!/bin/bash
-cat > /dev/tcp/10.0.0.49/666 < build/service
+cat > /dev/tcp/10.0.1.59/666 < build/kernel_LiveUpdate

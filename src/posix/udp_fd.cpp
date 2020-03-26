@@ -1,22 +1,8 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2017-2018 IncludeOS AS, Oslo, Norway
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #include <posix/udp_fd.hpp>
-#include <kernel/os.hpp> // OS::block()
+#include <os.hpp> // os::block()
 #include <errno.h>
+#include <net/interfaces.hpp>
 
 //#define POSIX_STRACE 1
 #ifdef POSIX_STRACE
@@ -27,7 +13,7 @@
 
 // return the "currently selected" networking stack
 static net::Inet& net_stack() {
-  return net::Inet::stack<> ();
+  return net::Interfaces::get(0);
 }
 
 size_t UDP_FD::max_buffer_msgs() const
@@ -35,8 +21,8 @@ size_t UDP_FD::max_buffer_msgs() const
   return (rcvbuf_ / net_stack().udp().max_datagram_size());
 }
 
-void UDP_FD::recv_to_buffer(net::UDPSocket::addr_t addr,
-  net::UDPSocket::port_t port, const char* buf, size_t len)
+void UDP_FD::recv_to_buffer(net::udp::addr_t addr,
+  net::udp::port_t port, const char* buf, size_t len)
 {
   // only recv to buffer if not full
   if(buffer_.size() < max_buffer_msgs()) {
@@ -181,7 +167,7 @@ ssize_t UDP_FD::sendto(const void* message, size_t len, int,
     [&written]() { written = true; });
 
   while(!written)
-    OS::block();
+    os::block();
 
   return len;
 }
@@ -209,10 +195,10 @@ ssize_t UDP_FD::recvfrom(void *__restrict__ buffer, size_t len, int flags,
     int bytes = 0;
     bool done = false;
 
-    this->sock->on_read(net::UDPSocket::recvfrom_handler::make_packed(
+    this->sock->on_read(net::udp::Socket::recvfrom_handler::make_packed(
     [&bytes, &done, this,
       buffer, len, flags, address, address_len]
-    (net::UDPSocket::addr_t addr, net::UDPSocket::port_t port,
+    (net::udp::addr_t addr, net::udp::port_t port,
       const char* data, size_t data_len)
     {
       // if this already been called once while blocking, buffer
@@ -242,7 +228,7 @@ ssize_t UDP_FD::recvfrom(void *__restrict__ buffer, size_t len, int flags,
 
     // Block until (any) data is read
     while(!done)
-      OS::block();
+      os::block();
 
     set_default_recv();
 
@@ -363,4 +349,3 @@ int UDP_FD::setsockopt(int level, int option_name,
       return -1;
   } // < switch(option_name)
 }
-

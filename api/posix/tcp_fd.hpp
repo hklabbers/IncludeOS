@@ -1,26 +1,9 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2015-2016 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #pragma once
 #ifndef INCLUDE_TCP_FD_HPP
 #define INCLUDE_TCP_FD_HPP
 
 #include "sockfd.hpp"
-#include <ringbuffer>
 
 struct TCP_FD_Conn;
 struct TCP_FD_Listen;
@@ -61,10 +44,6 @@ public:
   inline net::tcp::Listener& get_listener() noexcept;
   inline bool has_connq();
 
-  on_read_func   get_default_read_func()   override;
-  on_write_func  get_default_write_func()  override;
-  on_except_func get_default_except_func() override;
-
   ~TCP_FD() {}
 private:
   std::unique_ptr<TCP_FD_Conn> cd = nullptr;
@@ -77,7 +56,7 @@ struct TCP_FD_Conn
 {
   TCP_FD_Conn(net::tcp::Connection_ptr c);
 
-  void recv_to_ringbuffer(net::tcp::buffer_t);
+  void retrieve_buffer();
   void set_default_read();
 
   ssize_t send(const void *, size_t, int fl);
@@ -88,7 +67,8 @@ struct TCP_FD_Conn
   std::string to_string() const { return conn->to_string(); }
 
   net::tcp::Connection_ptr conn;
-  FixedRingBuffer<16384> readq;
+  net::tcp::buffer_t buffer;
+  size_t buf_offset;
   bool recv_disc = false;
 };
 

@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <net/tcp/packet_view.hpp>
+#include "packet_view.hpp"
 #include <net/ip6/packet_ip6.hpp>
 
 namespace net::tcp {
@@ -53,10 +53,10 @@ private:
   net::Addr ip_dst() const noexcept override
   { return packet().ip_dst(); }
 
-   uint16_t ip_data_length() const noexcept override
-   { return packet().ip_data_length(); }
+  uint16_t ip_data_length() const noexcept override
+  { return packet().ip_data_length(); }
 
-   uint16_t ip_header_length() const noexcept override
+  uint16_t ip_header_length() const noexcept override
   { return packet().ip_header_len(); }
 };
 

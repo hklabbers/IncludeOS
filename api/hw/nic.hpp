@@ -1,25 +1,10 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2015 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #ifndef HW_NIC_HPP
 #define HW_NIC_HPP
 
 #include "mac_addr.hpp"
 #include <net/inet_common.hpp>
+#include "device.hpp"
 
 #define NIC_SENDQ_LIMIT_DEFAULT  4096
 #define NIC_BUFFER_LIMIT_DEFAULT 4096
@@ -29,7 +14,7 @@ namespace hw {
   /**
    *  A public interface Network cards
    */
-  class Nic {
+  class Nic : public Device {
   public:
     using upstream    = delegate<void(net::Packet_ptr)>;
     using downstream  = net::downstream_link;
@@ -48,11 +33,10 @@ namespace hw {
     virtual const char* driver_name() const = 0;
 
     /** Human-readable interface/device name (eg. eth0) */
-    virtual std::string device_name() const = 0;
+    virtual std::string device_name() const override = 0;
 
-    /** A readable name of the type of device @todo: move to a abstract Device? */
-    static const char* device_type()
-    { return "NIC"; }
+    Device::Type device_type() const noexcept override
+    { return Device::Type::Nic; }
 
     /** The mac address. */
     virtual const MAC::Addr& mac() const noexcept = 0;
@@ -89,7 +73,7 @@ namespace hw {
 
     virtual size_t transmit_queue_available() = 0;
 
-    virtual void deactivate() = 0;
+    virtual void deactivate() override = 0;
 
     /** Stats getters **/
     virtual uint64_t get_packets_rx() = 0;
@@ -100,7 +84,7 @@ namespace hw {
     virtual void move_to_this_cpu() = 0;
 
     /** Flush remaining packets if possible. **/
-    virtual void flush() = 0;
+    virtual void flush() override = 0;
 
     virtual ~Nic() {}
 
@@ -140,6 +124,9 @@ namespace hw {
 
     void transmit_queue_available_event(size_t packets)
     {
+      // early on its possible someone tries to transmit without subscribers
+      if (tqa_events_.empty()) return;
+
       // divide up fairly
       size_t div = packets / tqa_events_.size();
 

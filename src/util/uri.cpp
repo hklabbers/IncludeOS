@@ -1,21 +1,6 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2015-2017 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #include <algorithm>
+#include <cassert>
 #include <cctype>
 #include <ostream>
 #include <uri>
@@ -23,7 +8,7 @@
 #include <vector>
 #include <array>
 
-#include "../../mod/http-parser/http_parser.h"
+#include <http-parser/http_parser.h>
 
 namespace uri {
 
@@ -79,7 +64,9 @@ static inline util::sview updated_copy(const std::vector<char>& to_copy,
                                        util::csview view,
                                        const std::vector<char>& from_copy)
 {
-  return {to_copy.data() + (view.data() - from_copy.data()), view.size()};
+  // sometimes the source is empty, but we need a valid empty string
+  if (view.data() == nullptr) return {&to_copy.back(), 0};
+  return {&to_copy.data()[view.data() - from_copy.data()], view.size()};
 }
 
 ///////////////////////////////////////////////////////////////////////////////

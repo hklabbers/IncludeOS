@@ -1,19 +1,3 @@
-// This file is a part of the IncludeOS unikernel - www.includeos.org
-//
-// Copyright 2015 Oslo and Akershus University College of Applied Sciences
-// and Alfred Bratterud
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 
 #ifndef KERNEL_EVENTS_HPP
 #define KERNEL_EVENTS_HPP
@@ -65,17 +49,12 @@ public:
   Events() = default;
 
 private:
-  Events(Events&) = delete;
-  Events(Events&&) = delete;
-  Events& operator=(Events&&) = delete;
-  Events& operator=(Events&) = delete;
-
   event_callback callbacks[NUM_EVENTS];
   std::array<uint64_t, NUM_EVENTS> received_array;
   std::array<uint64_t, NUM_EVENTS> handled_array;
 
-  std::array<bool, NUM_EVENTS>  event_subs;
-  std::array<bool, NUM_EVENTS>  event_pend;
+  std::array<bool, NUM_EVENTS>  event_subs {};
+  std::array<bool, NUM_EVENTS>  event_pend {};
   // using deque because vector resize causes invalidation of ranged for
   // when something subscribes during processing of events
   std::deque<uint8_t> sublist;
